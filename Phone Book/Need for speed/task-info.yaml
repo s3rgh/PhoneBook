@@ -1,0 +1,333 @@
+type: edu
+custom_name: stage3
+files:
+- name: src/phonebook/Main.java
+  visible: true
+  text: |
+    package phonebook;
+
+    public class Main {
+        public static void main(String[] args) {
+            System.out.println("Hello World!");
+        }
+    }
+  learner_created: false
+- name: test/PhoneBookTest.java
+  visible: false
+  text: "import org.hyperskill.hstest.stage.StageTest;\nimport org.hyperskill.hstest.testcase.CheckResult;\n\
+    import org.hyperskill.hstest.testcase.TestCase;\n\nimport java.util.ArrayList;\n\
+    import java.util.Arrays;\nimport java.util.List;\nimport java.util.regex.Matcher;\n\
+    import java.util.regex.Pattern;\n\npublic class PhoneBookTest extends StageTest\
+    \ {\n\n    private long timeOnTestStart;\n    \n    @Override\n    public List<TestCase>\
+    \ generate() {\n        timeOnTestStart = System.currentTimeMillis();\n      \
+    \  return Arrays.asList(\n                new TestCase().setTimeLimit(30 * 60\
+    \ * 1000)\n        );\n    }\n    \n    private CheckResult checkPhrases(String\
+    \ reply, String... phrases) {\n        reply = reply.toLowerCase();\n        for\
+    \ (String phrase : phrases) {\n            if (!reply.contains(phrase.toLowerCase()))\
+    \ {\n                return CheckResult.wrong(\"Not found the part `\" + phrase\
+    \ + \"` in your output.\");\n            }\n        }\n        return CheckResult.correct();\n\
+    \    }\n    \n    private List<String> findAll(String reply, String regex) {\n\
+    \        Matcher matcher = Pattern.compile(regex).matcher(reply);\n        List<String>\
+    \ groups = new ArrayList<>();\n        while (matcher.find()) {\n            groups.add(matcher.group());\n\
+    \        }\n        return groups;\n    }\n    \n    private String timeRegex\
+    \ = \"(\\\\d+)\\\\s*min.*?(\\\\d+)\\\\s*sec.*?(\\\\d+)\\\\s*ms\";\n    private\
+    \ Pattern timeRegexPattern = Pattern.compile(timeRegex);\n    \n    private long\
+    \ parseTimestamp(String timestamp) {\n        Matcher matcher = timeRegexPattern.matcher(timestamp);\n\
+    \        if (!matcher.matches() || matcher.groupCount() < 3) {\n            throw\
+    \ new IllegalStateException(\"???Not matches the line \" + timestamp);\n     \
+    \   }\n        int min = Integer.parseInt(matcher.group(1));\n        int sec\
+    \ = Integer.parseInt(matcher.group(2));\n        int ms = Integer.parseInt(matcher.group(3));\n\
+    \        return ms + sec * 1000 + min * 1000 * 60;\n    }\n    \n    @Override\n\
+    \    public CheckResult check(String reply, Object clue) {\n        long realTime\
+    \ = System.currentTimeMillis() - timeOnTestStart;\n        \n        reply = reply.toLowerCase();\n\
+    \        \n        CheckResult res = checkPhrases(reply,\n                \"found\"\
+    ,\n                \"min.\",\n                \"sec.\",\n                \"ms.\"\
+    ,\n                \"sorting time\",\n                \"searching time\",\n  \
+    \              \"linear search\",\n                \"bubble sort\",\n        \
+    \        \"jump search\",\n                \"quick sort\",\n                \"\
+    binary search\"\n        );\n        if (!res.isCorrect()) {\n            return\
+    \ res;\n        }\n        \n        List<String> stat1 = findAll(reply, \"500\
+    \ / 500\");\n        List<String> stat2 = findAll(reply, \"500/500\");\n     \
+    \   \n        if (stat1.size() + stat2.size() < 3) {\n            return CheckResult.wrong(\"\
+    Your output should contain 3 times the phrase `500 / 500`\");\n        }\n   \
+    \     \n        List<String> timestamps = findAll(reply, timeRegex);\n       \
+    \ if (timestamps.size() != 7) {\n            return CheckResult.wrong(\"Your output\
+    \ should contain 7 timer outputs, but found \"\n                    + timestamps.size());\n\
+    \        }\n        // should not fail..\n        long t1 = parseTimestamp(timestamps.get(0));\n\
+    \        long t2 = parseTimestamp(timestamps.get(1));\n        long t3 = parseTimestamp(timestamps.get(2));\n\
+    \        long t4 = parseTimestamp(timestamps.get(3));\n        long t5 = parseTimestamp(timestamps.get(4));\n\
+    \        long t6 = parseTimestamp(timestamps.get(5));\n        long t7 = parseTimestamp(timestamps.get(6));\n\
+    \        \n        if (Math.abs(t3 + t4 - t2) > 100) {\n            return CheckResult.wrong(\"\
+    Your third and fourth timer outputs in total (sorting and searching) \" +\n  \
+    \                  \"should be equal to the second (total search time).\");\n\
+    \        }\n        if (Math.abs(t6 + t7 - t5) > 100) {\n            return CheckResult.wrong(\"\
+    Your 6-th and 7-th timer outputs in total (sorting and searching) \" +\n     \
+    \               \"should be equal to the 5-th (total search time).\");\n     \
+    \   }\n        \n        long estimatedTime = t1 + t2 + t5;\n        if (realTime\
+    \ < 1000) {\n            return CheckResult.wrong(\"Your program completes too\
+    \ fast. Faster than a second!\");\n        }\n        \n        if (Math.abs(estimatedTime\
+    \ - realTime) > estimatedTime * 0.3) {\n            return CheckResult.wrong(\"\
+    Your estimated time is not similar to real time the program works. \" +\n    \
+    \                \"Real time: \" + realTime + \"ms, estimated time: \" + estimatedTime\
+    \ + \"ms\");\n        }\n        \n        return CheckResult.correct();\n   \
+    \ }\n}\n"
+  learner_created: false
+- name: src/phonebook/DataProcessing/DataProcessing.java
+  visible: true
+  text: |
+    package phonebook.DataProcessing;
+
+    import phonebook.datastore.DataStore;
+    import phonebook.search.JumpSearch;
+    import phonebook.search.LinearSearch;
+    import phonebook.sort.BubbleSort;
+
+    import java.util.List;
+
+    public class DataProcessing {
+
+        private DataProcessing() {
+        }
+
+        public static void run(String findTxt, String directoryTxt) {
+            DataStore dataStore = new DataStore();
+            LinearSearch linearSearch = new LinearSearch();
+            BubbleSort bubbleSort = new BubbleSort();
+            JumpSearch jumpSearch = new JumpSearch();
+
+            List<String> find = dataStore.getStringList(findTxt);
+            List<String> directory = dataStore.getStringList(directoryTxt);
+
+            System.out.println("Start searching (linear search)...");
+
+            linearSearch.search(find, directory);
+            long linearSearchTime = linearSearch.getLinearSearchTime();
+
+            System.out.printf("Found %d / %d entries. Time taken: %d min. %d sec. %d ms.\n\n",
+                    linearSearch.getCount(), find.size(), linearSearchTime / 60000, (linearSearchTime % 60000) / 1000, linearSearchTime % 1000);
+
+            System.out.println("Start searching (bubble sort + jump search)...");
+            List<String> bSortedList = bubbleSort.sort(directory, linearSearch.getLinearSearchTime());
+
+            long sortTime = bubbleSort.getSortTime();
+
+            if (sortTime > linearSearchTime * 10) {
+
+                linearSearch.search(bSortedList, find);
+
+                long newLinearSearchTime = linearSearch.getLinearSearchTime();
+                System.out.printf("Found %d / %d entries. Time taken: %d min. %d sec. %d ms.\n",
+                        linearSearch.getCount(), find.size(),
+                        (newLinearSearchTime + sortTime) / 60000,
+                        ((newLinearSearchTime + sortTime) % 60000) / 1000,
+                        (newLinearSearchTime + sortTime) % 1000);
+
+                System.out.printf("Sorting time: %d min. %d sec. %d ms. - STOPPED, moved to linear search\n",
+                        sortTime / 60000, (sortTime % 60000) / 1000, sortTime % 1000);
+
+                System.out.printf("Searching time: %d min. %d sec. %d ms.\n",
+                        newLinearSearchTime / 60000, (newLinearSearchTime % 60000) / 1000, newLinearSearchTime % 1000);
+
+            } else {
+
+                jumpSearch.search(find, directory);
+
+                long jumpSearchTime = jumpSearch.getJumpSearchTime();
+
+                System.out.printf("Found %d / %d entries. Time taken: %d min. %d sec. %d ms.\n\n",
+                        jumpSearch.getCount(), find.size(),
+                        (jumpSearchTime + sortTime) / 60000,
+                        ((jumpSearchTime + sortTime) % 60000) / 1000,
+                        (jumpSearchTime + sortTime) % 1000);
+
+                System.out.printf("Sorting time: %d min. %d sec. %d ms.\n",
+                        sortTime / 60000, (sortTime % 60000) / 1000, sortTime % 1000);
+                System.out.printf("Searching time: %d min. %d sec. %d ms.\n",
+                        jumpSearchTime / 60000, (jumpSearchTime % 60000) / 1000, jumpSearchTime % 1000);
+            }
+        }
+    }
+  learner_created: true
+- name: src/phonebook/datastore/DataStore.java
+  visible: true
+  text: |
+    package phonebook.datastore;
+
+    import java.io.BufferedReader;
+    import java.io.IOException;
+    import java.io.InputStreamReader;
+    import java.net.MalformedURLException;
+    import java.net.URL;
+    import java.util.ArrayList;
+    import java.util.List;
+
+    public class DataStore {
+
+        public List<String> getStringList(String stringUrl) {
+            List<String> list = new ArrayList<>();
+            URL url;
+            try {
+                url = new URL(stringUrl);
+            } catch (MalformedURLException e) {
+                throw new RuntimeException(e);
+            }
+
+            try (BufferedReader bufferedReader1 = new BufferedReader(new InputStreamReader(url.openStream()))) {
+                String temp;
+                while ((temp = bufferedReader1.readLine()) != null) {
+                    list.add(temp);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return list;
+        }
+    }
+  learner_created: true
+- name: src/phonebook/sort/BubbleSort.java
+  visible: true
+  text: |
+    package phonebook.sort;
+
+    import java.util.List;
+
+    public class BubbleSort {
+
+        private long sortTime = 0;
+
+        public long getSortTime() {
+            return sortTime;
+        }
+
+        public List<String> sort(List<String> list, long linearSearchTime) {
+
+            long start = System.currentTimeMillis();
+            long end;
+            for (int i = 0; i < list.size(); i++) {
+                for (int j = 0; j < list.size() - i - 1; j++) {
+                    if (list.get(j).split(" ")[1].compareTo(list.get(j + 1).split(" ")[1]) > 0) {
+                        list.add(j, list.get(j + 1));
+                        list.remove(j + 2);
+                        end = System.currentTimeMillis();
+                        this.sortTime = end - start;
+                        if (this.sortTime > linearSearchTime * 10) {
+                            return list;
+                        }
+                    }
+                }
+            }
+            return list;
+        }
+    }
+  learner_created: true
+- name: src/phonebook/search/JumpSearch.java
+  visible: true
+  text: |
+    package phonebook.search;
+
+    import java.util.List;
+
+    public class JumpSearch {
+
+        private long jumpSearchTime = 0;
+        private int count;
+
+        public long getJumpSearchTime() {
+            return jumpSearchTime;
+        }
+
+        public int getCount() {
+            return count;
+        }
+
+        public long search(List<String> find, List<String> target) {
+
+            long begin = System.currentTimeMillis();
+            int jumpSize = (int) Math.floor(Math.sqrt(find.size()));
+
+            if (find.isEmpty()) {
+                return -1;
+            }
+
+            int current = 0;
+            int prev = 0;
+
+
+            for (int i = 0; i < target.size(); i++) {
+                while (find.get(current).compareTo(target.get(i).split(" ")[1]) < 0) {
+                    if (find.get(current).equals(find.get(find.size() - 1))) {
+                        return -1;
+                    }
+                    prev = current;
+                    current = Math.min(current + jumpSize, find.size() - 1);
+                }
+
+                while (find.get(current).compareTo(target.get(i).split(" ")[1]) > 0) {
+                    current = current - 1;
+                    if (find.get(current).compareTo(find.get(prev)) <= 0) {
+                        return -1;
+                    }
+                }
+
+                if (find.get(current).compareTo(target.get(i).split(" ")[1]) == 0) {
+                    count++;
+                }
+            }
+
+            jumpSearchTime = System.currentTimeMillis() - begin;
+            return -1;
+        }
+    }
+  learner_created: true
+- name: src/phonebook/search/LinearSearch.java
+  visible: true
+  text: |
+    package phonebook.search;
+
+    import java.util.List;
+
+    public class LinearSearch {
+
+        private long linearSearchTime = 0;
+        private int count = 0;
+
+        public long getLinearSearchTime() {
+            return linearSearchTime;
+        }
+
+        public int getCount() {
+            return count;
+        }
+
+        public void search(List<String> find, List<String> target) {
+            long start = System.currentTimeMillis();
+
+            for (int i = 0; i < find.size(); i++) {
+                for (int j = 0; j < target.size(); j++) {
+                    if (target.get(j).contains(find.get(i))) {
+                        count++;
+                        break;
+                    }
+                }
+            }
+
+            long end = System.currentTimeMillis();
+            linearSearchTime = end - start;
+        }
+    }
+  learner_created: true
+- name: src/phonebook/search/BinarySearch.java
+  visible: true
+  learner_created: true
+- name: src/phonebook/search/Searchable.java
+  visible: true
+  learner_created: true
+- name: src/phonebook/sort/QuickSort.java
+  visible: true
+  learner_created: true
+feedback_link: https://hyperskill.org/learn/step/5484#comment
+status: Solved
+feedback:
+  message: Congratulations!
+  time: "Wed, 15 Mar 2023 00:13:02 UTC"
+record: 3
